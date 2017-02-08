@@ -11,17 +11,21 @@ local function incr(dict, key, increment)
    return newval
 end
 
-function reqmoit.stat(dict, key, value)
+function reqmoit.stat(dict, key, request_time, bytes_sent, request_length)
    local sum_key = key .. "-sum"
    local count_key = key .. "-count"
    local start_time_key = key .. "-start_time"
+   local bytes_sent_sum_key = key .. "-bytes_sent"
+   local request_length_sum_key = key .. "-request_length"
 
    local start_time = dict:get(start_time_key)
    if not start_time then
       dict:set(start_time_key, ngx.now())
    end
 
-   local sum = incr(dict, sum_key, value)
+   incr(dict, sum_key, request_time)
+   incr(dict, bytes_sent_sum_key, bytes_sent)
+   incr(dict, request_length_sum_key, request_length)
    incr(dict, count_key)
 end
 
@@ -30,11 +34,13 @@ function reqmoit.stat_5xx(dict, key)
    incr(dict, server_err_key)
 end
 
-function reqmoit.analyse(dict, key)
+function reqmoit.analyse(dict, key, keep)
    local sum_key = key .. "-sum"
    local count_key = key .. "-count"
    local start_time_key = key .. "-start_time"
    local server_err_key = key .. "-5xx"
+   local bytes_sent_sum_key = key .. "-bytes_sent"
+   local request_length_sum_key = key .. "-request_length"
 
    local elapsed_time = 0
    local avg = 0
@@ -51,13 +57,21 @@ function reqmoit.analyse(dict, key)
       avg = sum / count
    end
    local server_err_num = dict:get(server_err_key) or 0
+   local bytes_sent = dict:get(bytes_sent_sum_key) or 0
+   local request_length = dict:get(request_length_sum_key) or 0
 
-   dict:delete(sum_key)
-   dict:delete(start_time_key)
-   dict:delete(count_key)
-   dict:delete(server_err_key)
+   if (keep) then
+     
+   else
+     dict:delete(sum_key)
+	 dict:delete(start_time_key)
+	 dict:delete(count_key)
+	 dict:delete(server_err_key)
+	 dict:delete(bytes_sent_sum_key)
+	 dict:delete(request_length_sum_key)
+   end
 
-   return count, avg, elapsed_time, server_err_num
+   return count, avg, elapsed_time, server_err_num, bytes_sent, request_length
 end
 
 return reqmoit
